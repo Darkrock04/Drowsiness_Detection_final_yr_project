@@ -1,72 +1,114 @@
 # Driver Monitoring System (Final Year Project)
 
-This project implements a comprehensive in-cabin monitoring system designed to promote driver safety. It aggregates various computer vision and deep learning techniques to track the driver's state and detect secondary activities that could lead to accidents.
+This project implements a comprehensive in-cabin monitoring system designed to promote driver safety. It aggregates computer vision and deep learning techniques to continuously track the driver's state throughout their entire driving session.
 
 ## Documentation Navigation
 
-The technical methodologies and dataset details have been split into specific documentation files for easy reading:
+Technical methodologies and dataset references are in the `docs/` folder:
 
 1. **[Facial Landmarks, Drowsiness, Yawning & Head Pose](docs/facial_features.md)**: Details the `dlib` 300-W implementation and the mathematical ratios (EAR/MAR) used for fatigue detection.
-2. **[Object Detection & Occupancy](docs/object_detection.md)**: Details the transition from classical Image Classification (Fisher Vectors) to modern Deep Learning (`YOLOv8`) for detecting cell phones and passengers.
+2. **[Object Detection & Occupancy](docs/object_detection.md)**: Covers YOLOv8 usage for phone detection and passenger occupancy.
 
-## Features & Methodologies
+---
 
-1. **Continuous Driving Session Monitoring**
-   - **Methodology**: The system actively tracks the duration of the entire driving session from start to finish. When the trip concludes, it prints a post-session summary report detailing total driving time and all logged safety infractions.
+## Features
 
-2. **Drowsiness Detection**
-   - **Methodology**: Calculates the Eye Aspect Ratio (EAR) using 68-point facial landmarks. The EAR algorithm calculates the distances between the vertical and horizontal eye landmarks. If the EAR falls below a predefined threshold for a continuous number of frames, an alert is triggered and logged to the session metrics.
-   - **Implementation**: Utilizes `dlib`'s pre-trained HOG face detector and the `shape_predictor_68_face_landmarks.dat` model to locate the eyes.
+| Feature | Method | Alert Trigger |
+|---|---|---|
+| **Drowsiness Detection** | Eye Aspect Ratio (EAR) via dlib | EAR < 0.25 for 20 consecutive frames |
+| **Yawning Detection** | Inner Lip Aspect Ratio (MAR) via dlib | MAR > 0.65 for 15 consecutive frames |
+| **Distraction Detection** | 3D Head Pose Estimation via `cv2.solvePnP` | Head tilt > 30° for 15 consecutive frames |
+| **Phone Usage** | YOLOv8 Nano object detection (COCO class 67) | Phone detected > 40% confidence |
+| **Session Monitoring** | Session timer + infraction counters | End-of-session summary printed on exit |
 
-3. **Yawning Detection**
-   - **Methodology**: Calculates the Mouth Aspect Ratio (MAR). Similar to EAR, it computes the distances between specific upper/lower lip landmarks. When the mouth opens beyond a threshold indicating a yawn, an alert is triggered and logged.
-   - **Implementation**: Also relies on the `dlib` 68-point landmark predictor, specifically targeting the jaw and lip contour points.
+---
 
-4. **Distraction Detection (Head Pose Estimation)**
-   - **Methodology**: 3D Head pose estimation is performed by solving the Perspective-n-Point (PnP) problem (`cv2.solvePnP` function). This projects 2D facial landmarks (nose, chin, eyes, mouth corners) into a 3D space to calculate the Euler angles of the head. Excessive head tilt away from the forward-facing position triggers a distraction alert and is logged to the session.
-   - **Implementation**: Uses standard 3D anthropometric face models mapped to the 2D `dlib` landmarks extracted from the frame.
+## System Pipeline (per frame)
 
-5. **Secondary Activity Recognition (Phone & Objects)**
-   - **Methodology**: Deep learning object detection runs concurrently with facial tracking to detect if the driver is holding a cell phone or other distracting devices. 
-   - **Implementation**: Utilizes the modern `Ultralytics YOLOv8` architecture. The pre-trained Nano model (`yolov8n.pt`) is used to quickly identify "person" and "cell phone" classes from the COCO dataset in real-time. Usage is logged during the session.
+```
+Camera Frame
+    │
+    ├── YOLOv8 ──────────────────► Detect Phone / Person
+    │
+    ├── Grayscale Conversion
+    │
+    ├── dlib HOG Face Detector ──► Face Bounding Box
+    │
+    ├── dlib 68-pt Landmarks ────► Eye / Mouth / Nose Points
+    │
+    ├── EAR Calculation ─────────► Drowsiness Alert
+    ├── MAR Calculation ─────────► Yawning Alert
+    └── cv2.solvePnP ────────────► Distraction Alert
+```
 
-6. **Passenger Occupancy & Seatbelt Classification**
-   - **Methodology**: The `YOLOv8` model also identifies "person" objects within the vehicle cabin. By analyzing their position and the presence of a seatbelt (if detectable by the model), the system can infer passenger occupancy and seatbelt usage.
-   - **Implementation**: Leverages the same `YOLOv8` model for object detection.
+---
 
-## System Architecture
+## Installation (Windows)
 
-The pipeline is driven directly from the webcam feed via OpenCV. Below is the continuous data flow for each frame:
-1. Frame is captured via `cv2.VideoCapture`.
-2. Frame is passed to `YOLOv8` for rapid object detection (Phone/Person).
-3. Frame is converted to Grayscale for classical feature extraction.
-4. `dlib` HOG Face Detector locates the face bounding box.
-5. `dlib` 68-point shape predictor extracts the 68 specific facial landmarks.
-6. The landmarks are geometrically split into Left Eye, Right Eye, and Mouth coordinates.
-7. EAR, MAR, and Head Pose are computed simultaneously using Euclidean distances and PnP projection.
-8. If any threshold is breached, a visual alert is rendered on the frame, and `pygame` plays an asynchronous audio alarm (`alarm.wav`).
+### Prerequisites
+- **Python 3.10** (recommended — dlib-bin does not yet support 3.13 on Windows)
+- An **external USB webcam** (connected as Camera Index `1`)
+- `shape_predictor_68_face_landmarks.dat` placed in the project root  
+  ↳ Download from: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
+- `alarm.wav` audio file placed in the project root
 
-## Installation & Usage
+### Setup
 
-1. **Navigate to the absolute project folder:**
-   ```bash
-   cd d:\CODE\Drowsiness_Detection\Drowsiness_Detection\final_year_project
-   ```
-2. **Setup virtual environment (Optional but Recommended):**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On macOS/Linux
-   venv\Scripts\activate     # On Windows
-   ```
-3. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. **Ensure the dlib model is present:**
-   Make sure `shape_predictor_68_face_landmarks.dat` is downloaded and placed in the root of the project folder.
-   
-5. **Run the Application:**
-   ```bash
-   python main.py
-   ```
-   **Press `q` to terminate the video stream and exit the application.**
+```bash
+# 1. Navigate to the project folder
+cd d:\CODE\Drowsiness_Detection\Drowsiness_Detection\final_year_project
+
+# 2. Create and activate the virtual environment
+python -m venv venv
+.\venv\Scripts\activate
+
+# 3. Install all dependencies into the venv
+pip install -r requirements.txt
+```
+
+### Run
+```bash
+# Make sure the venv is activated first!
+.\venv\Scripts\activate
+
+python main.py
+```
+Press **`q`** to end the driving session. A summary of all infractions will be printed to the terminal.
+
+---
+
+## End-of-Session Report
+
+When you press `q` to exit, the console will display a structured summary like:
+
+```
+========================================
+ DRIVING SESSION COMPLETED
+========================================
+Total Session Duration: 432.67 seconds
+--- Infraction Summary ---
+Drowsiness Instances: 3
+Yawning Instances:    1
+Distraction Events:   5
+Phone Usage Events:   2
+========================================
+```
+
+---
+
+## Project Structure
+
+```
+final_year_project/
+├── main.py                          # Main application entry point
+├── requirements.txt                 # Python dependencies
+├── .gitignore
+├── alarm.wav                        # Audio alarm (not tracked in git)
+├── shape_predictor_68_face_landmarks.dat  # dlib model (not tracked in git)
+├── utils/
+│   ├── facial_features.py           # EAR, MAR, Head Pose functions
+│   └── object_detection.py          # YOLOv8 phone/person detection
+└── docs/
+    ├── facial_features.md           # Facial detection methodology
+    └── object_detection.md          # Object detection methodology
+```
