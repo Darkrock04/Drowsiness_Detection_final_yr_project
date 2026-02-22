@@ -1,8 +1,7 @@
 opencv-python
-dlib
+dlib-bin
 imutils
 scipy
 numpy
-playsound
 ultralytics
 pygame
