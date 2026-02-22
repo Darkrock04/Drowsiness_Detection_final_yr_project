@@ -1,7 +1,12 @@
+import os
 from ultralytics import YOLO
 
+# Get the directory of the utility script and go up one level to the main project root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+model_path = os.path.join(BASE_DIR, 'yolov8n.pt')
+
 # Initialize YOLO model (nano version for speed)
-model = YOLO('yolov8n.pt')
+model = YOLO(model_path)
 
 # COCO Class IDs
 PERSON_CLASS_ID = 0

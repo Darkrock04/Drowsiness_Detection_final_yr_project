@@ -16,10 +16,10 @@ from utils.object_detection import detect_objects
 EYE_AR_THRESH = 0.25
 EYE_AR_CONSEC_FRAMES = 20
 
-MOUTH_AR_THRESH = 0.90  # Increased from 0.79 to reduce false positives (requires mouth to be much wider)
+MOUTH_AR_THRESH = 0.65  # Threshold for INNER lip openness
 MOUTH_AR_CONSEC_FRAMES = 15  # Number of frames mouth must be open to count as a yawn (prevents talking from triggering it)
 
-HEAD_TILT_THRESH = 20.0  # Degrees
+HEAD_TILT_THRESH = 30.0  # Degrees (Increased from 20 to prevent false triggers from off-center external cameras)
 HEAD_TILT_CONSEC_FRAMES = 15
 
 # -------- Initialize Pygame for Alarm --------
@@ -48,7 +48,8 @@ predictor = dlib.shape_predictor(predictor_path)
 # Extract eye and mouth indices from face_utils
 (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
 (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
-(mStart, mEnd) = (49, 68)
+# Use only the inner lip points (indices 60 to 67 in dlib) for precise mouth opening calculations
+(mStart, mEnd) = (60, 68)
 
 # Historical Counters
 ear_counter = 0
@@ -94,11 +95,10 @@ while True:
 
     # --- Feature 1: Object Detection (Phone/Seatbelt/Passenger) ---
     # Pass a precise copy of the frame to YOLO so it doesn't corrupt the numpy array memory layout for dlib
-    # person_detected, phone_detected, frame_yolo = detect_objects(frame.copy())
+    person_detected, phone_detected, frame_yolo = detect_objects(frame.copy())
     
     # We will use the YOLO annotated frame as our base for drawing facial landmarks later
-    display_frame = frame.copy()
-    phone_detected = False
+    display_frame = frame_yolo
 
     # --- Detect faces ---
     # Note: detector requires a clean 8-bit unsigned integer array (which our grayscale conversion provides)
@@ -195,12 +195,12 @@ while True:
             cv2.putText(display_frame, f"TILT: {tilt_val:.2f}", (600, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
     # --- Secondary Activities Check ---
-    # if phone_detected:
-    #     cv2.putText(display_frame, "PHONE USAGE ALERT!", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-    #     alert_triggered = True
-    #     if time.time() - last_phone_log > COOLDOWN:
-    #         metrics["phone_usage_alerts"] += 1
-    #         last_phone_log = time.time()
+    if phone_detected:
+        cv2.putText(display_frame, "PHONE USAGE ALERT!", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        alert_triggered = True
+        if time.time() - last_phone_log > COOLDOWN:
+            metrics["phone_usage_alerts"] += 1
+            last_phone_log = time.time()
 
     # --- Seatbelt Status ---
     # Placeholder warning for missing custom seatbelt YOLO

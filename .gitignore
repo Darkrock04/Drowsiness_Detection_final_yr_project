@@ -1,10 +1,17 @@
-__pycache__/
-*.pyc
+# Virtual Environment
 venv/
 env/
 .env
 
-# Large model files
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Large model files (download separately - see README)
 *.dat
 *.pt
 *.h5
+
+# Downloaded wheels
+*.whl
