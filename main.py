@@ -5,6 +5,9 @@ from imutils import face_utils
 import time
 import pygame
 import numpy as np
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from utils.facial_features import eye_aspect_ratio, mouth_aspect_ratio, get_head_pose
 from utils.object_detection import detect_objects
@@ -23,7 +26,8 @@ pygame.mixer.init()
 def play_alarm():
     if not pygame.mixer.music.get_busy():
         try:
-            pygame.mixer.music.load('alarm.wav')
+            alarm_path = os.path.join(BASE_DIR, 'alarm.wav')
+            pygame.mixer.music.load(alarm_path)
             pygame.mixer.music.play()
         except Exception as e:
             print("Could not play alarm:", e)
@@ -35,8 +39,10 @@ def stop_alarm():
 # -------- Load Dlib's face detector and shape predictor --------
 print("[INFO] Loading facial landmark predictor...")
 detector = dlib.get_frontal_face_detector()
-# Please ensure shape_predictor_68_face_landmarks.dat exists in the directory
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+predictor_path = os.path.join(BASE_DIR, "shape_predictor_68_face_landmarks.dat")
+if not os.path.exists(predictor_path):
+    print(f"[ERROR] Could not find {predictor_path}. Ensure it is downloaded.")
+predictor = dlib.shape_predictor(predictor_path)
 
 # Extract eye and mouth indices from face_utils
 (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
@@ -69,12 +75,18 @@ time.sleep(2.0)
 
 while True:
     ret, frame = cap.read()
-    if not ret:
-        print("[ERROR] Could not read from webcam.")
-        break
+    if not ret or frame is None:
+        print("[WARNING] Empty frame received from webcam. Retrying...")
+        time.sleep(0.1)
+        continue
         
+    # Resize and convert to grayscale for dlib
     frame = imutils.resize(frame, width=800)
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    try:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    except Exception as e:
+        print(f"[ERROR] Could not convert frame to grayscale: {e}")
+        continue
     size = gray.shape
 
     # --- Feature 1: Object Detection (Phone/Seatbelt/Passenger) ---
