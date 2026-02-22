@@ -16,7 +16,8 @@ from utils.object_detection import detect_objects
 EYE_AR_THRESH = 0.25
 EYE_AR_CONSEC_FRAMES = 20
 
-MOUTH_AR_THRESH = 0.79
+MOUTH_AR_THRESH = 0.90  # Increased from 0.79 to reduce false positives (requires mouth to be much wider)
+MOUTH_AR_CONSEC_FRAMES = 15  # Number of frames mouth must be open to count as a yawn (prevents talking from triggering it)
 
 HEAD_TILT_THRESH = 20.0  # Degrees
 HEAD_TILT_CONSEC_FRAMES = 15
@@ -52,6 +53,7 @@ predictor = dlib.shape_predictor(predictor_path)
 # Historical Counters
 ear_counter = 0
 tilt_counter = 0
+yawn_counter = 0
 
 # -------- Session Monitoring Statistics --------
 session_start_time = time.time()
@@ -92,10 +94,11 @@ while True:
 
     # --- Feature 1: Object Detection (Phone/Seatbelt/Passenger) ---
     # Pass a precise copy of the frame to YOLO so it doesn't corrupt the numpy array memory layout for dlib
-    person_detected, phone_detected, frame_yolo = detect_objects(frame.copy())
+    # person_detected, phone_detected, frame_yolo = detect_objects(frame.copy())
     
     # We will use the YOLO annotated frame as our base for drawing facial landmarks later
-    display_frame = frame_yolo 
+    display_frame = frame.copy()
+    phone_detected = False
 
     # --- Detect faces ---
     # Note: detector requires a clean 8-bit unsigned integer array (which our grayscale conversion provides)
@@ -144,11 +147,15 @@ while True:
             
             # --- Yawn Check ---
             if mar > MOUTH_AR_THRESH:
-                cv2.putText(display_frame, "YAWNING ALERT!", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                alert_triggered = True
-                if time.time() - last_yawn_log > COOLDOWN:
-                        metrics["yawning_alerts"] += 1
-                        last_yawn_log = time.time()
+                yawn_counter += 1
+                if yawn_counter >= MOUTH_AR_CONSEC_FRAMES:
+                    cv2.putText(display_frame, "YAWNING ALERT!", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    alert_triggered = True
+                    if time.time() - last_yawn_log > COOLDOWN:
+                            metrics["yawning_alerts"] += 1
+                            last_yawn_log = time.time()
+            else:
+                yawn_counter = 0
 
             # 4. Head Pose Estimation (Distraction)
             image_points = np.array([
@@ -188,16 +195,16 @@ while True:
             cv2.putText(display_frame, f"TILT: {tilt_val:.2f}", (600, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
     # --- Secondary Activities Check ---
-    if phone_detected:
-        cv2.putText(display_frame, "PHONE USAGE ALERT!", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-        alert_triggered = True
-        if time.time() - last_phone_log > COOLDOWN:
-            metrics["phone_usage_alerts"] += 1
-            last_phone_log = time.time()
+    # if phone_detected:
+    #     cv2.putText(display_frame, "PHONE USAGE ALERT!", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+    #     alert_triggered = True
+    #     if time.time() - last_phone_log > COOLDOWN:
+    #         metrics["phone_usage_alerts"] += 1
+    #         last_phone_log = time.time()
 
     # --- Seatbelt Status ---
     # Placeholder warning for missing custom seatbelt YOLO
-    cv2.putText(display_frame, "Seatbelt: Not Trained (YOLOv8 Default)", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+    # cv2.putText(display_frame, "Seatbelt: Not Trained (YOLOv8 Default)", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
     # --- Trigger Audio Alarm ---
     if alert_triggered:
