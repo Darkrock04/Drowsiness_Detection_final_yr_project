@@ -69,8 +69,9 @@ last_distract_log = 0
 last_phone_log = 0
 COOLDOWN = 5.0  # seconds between logging the same type of alert
 
-print("[INFO] Starting video stream for driving session...")
-cap = cv2.VideoCapture(0)
+print("[INFO] Starting video stream for driving session (External Camera)...")
+# Index 1 is typically the first external USB webcam on Windows. 
+cap = cv2.VideoCapture(1)
 time.sleep(2.0)
 
 while True:
@@ -90,16 +91,20 @@ while True:
     size = gray.shape
 
     # --- Feature 1: Object Detection (Phone/Seatbelt/Passenger) ---
-    person_detected, phone_detected, frame_yolo = detect_objects(frame)
-    frame = frame_yolo # Overlay facial analysis on top of YOLO results
+    # Pass a precise copy of the frame to YOLO so it doesn't corrupt the numpy array memory layout for dlib
+    person_detected, phone_detected, frame_yolo = detect_objects(frame.copy())
+    
+    # We will use the YOLO annotated frame as our base for drawing facial landmarks later
+    display_frame = frame_yolo 
 
     # --- Detect faces ---
+    # Note: detector requires a clean 8-bit unsigned integer array (which our grayscale conversion provides)
     rects = detector(gray, 0)
     
     alert_triggered = False
 
     if len(rects) > 0:
-        cv2.putText(frame, "Face Detected", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(display_frame, "Face Detected", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         for rect in rects:
             # 1. Prediction and facial landmarks
@@ -116,14 +121,14 @@ while True:
             # Convex hull for eyes visualization
             leftEyeHull = cv2.convexHull(leftEye)
             rightEyeHull = cv2.convexHull(rightEye)
-            cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
-            cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
+            cv2.drawContours(display_frame, [leftEyeHull], -1, (0, 255, 0), 1)
+            cv2.drawContours(display_frame, [rightEyeHull], -1, (0, 255, 0), 1)
 
             # --- Drowsiness Check ---
             if ear < EYE_AR_THRESH:
                 ear_counter += 1
                 if ear_counter >= EYE_AR_CONSEC_FRAMES:
-                    cv2.putText(frame, "DROWSINESS ALERT!", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.putText(display_frame, "DROWSINESS ALERT!", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                     alert_triggered = True
                     if time.time() - last_drowsy_log > COOLDOWN:
                         metrics["drowsiness_alerts"] += 1
@@ -135,11 +140,11 @@ while True:
             mouth = shape[mStart:mEnd]
             mar = mouth_aspect_ratio(mouth)
             mouthHull = cv2.convexHull(mouth)
-            cv2.drawContours(frame, [mouthHull], -1, (0, 255, 0), 1)
+            cv2.drawContours(display_frame, [mouthHull], -1, (0, 255, 0), 1)
             
             # --- Yawn Check ---
             if mar > MOUTH_AR_THRESH:
-                cv2.putText(frame, "YAWNING ALERT!", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                cv2.putText(display_frame, "YAWNING ALERT!", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                 alert_triggered = True
                 if time.time() - last_yawn_log > COOLDOWN:
                         metrics["yawning_alerts"] += 1
@@ -157,17 +162,17 @@ while True:
             
             # Draw projection points
             for p in image_points:
-                cv2.circle(frame, (int(p[0]), int(p[1])), 3, (0, 0, 255), -1)
+                cv2.circle(display_frame, (int(p[0]), int(p[1])), 3, (0, 0, 255), -1)
                 
             head_tilt_degree, sp, ep, ep_alt = get_head_pose(size, image_points, frame.shape[0])
-            cv2.line(frame, sp, ep, (255, 0, 0), 2)
-            cv2.line(frame, sp, ep_alt, (0, 0, 255), 2)
+            cv2.line(display_frame, sp, ep, (255, 0, 0), 2)
+            cv2.line(display_frame, sp, ep_alt, (0, 0, 255), 2)
 
             # --- Distraction Check by Head Pose ---
             if head_tilt_degree > HEAD_TILT_THRESH:
                 tilt_counter += 1
                 if tilt_counter >= HEAD_TILT_CONSEC_FRAMES:
-                    cv2.putText(frame, "DISTRACTION ALERT! (Head Tilt)", (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.putText(display_frame, "DISTRACTION ALERT! (Head Tilt)", (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                     alert_triggered = True
                     if time.time() - last_distract_log > COOLDOWN:
                         metrics["distraction_alerts"] += 1
@@ -176,15 +181,15 @@ while True:
                 tilt_counter = 0
 
             # --- Text Overlays (Stats) ---
-            cv2.putText(frame, f"EAR: {ear:.2f}", (600, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(frame, f"MAR: {mar:.2f}", (600, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(display_frame, f"EAR: {ear:.2f}", (600, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(display_frame, f"MAR: {mar:.2f}", (600, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             # handle array from degree calc
             tilt_val = head_tilt_degree[0] if isinstance(head_tilt_degree, (list, np.ndarray)) else head_tilt_degree
-            cv2.putText(frame, f"TILT: {tilt_val:.2f}", (600, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(display_frame, f"TILT: {tilt_val:.2f}", (600, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
     # --- Secondary Activities Check ---
     if phone_detected:
-        cv2.putText(frame, "PHONE USAGE ALERT!", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.putText(display_frame, "PHONE USAGE ALERT!", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         alert_triggered = True
         if time.time() - last_phone_log > COOLDOWN:
             metrics["phone_usage_alerts"] += 1
@@ -192,7 +197,7 @@ while True:
 
     # --- Seatbelt Status ---
     # Placeholder warning for missing custom seatbelt YOLO
-    cv2.putText(frame, "Seatbelt: Not Trained (YOLOv8 Default)", (10, 750), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+    cv2.putText(display_frame, "Seatbelt: Not Trained (YOLOv8 Default)", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
     # --- Trigger Audio Alarm ---
     if alert_triggered:
@@ -200,7 +205,7 @@ while True:
     else:
         stop_alarm()
 
-    cv2.imshow("Continuous Driver Session Monitoring", frame)
+    cv2.imshow("Continuous Driver Session Monitoring", display_frame)
     key = cv2.waitKey(1) & 0xFF
     if key == ord("q"):
         break
