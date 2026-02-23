@@ -112,3 +112,13 @@ final_year_project/
     ├── facial_features.md           # Facial detection methodology
     └── object_detection.md          # Object detection methodology
 ```
+
+---
+
+## Limitations & Future Work (Academic Scope)
+
+As a final year project, several boundaries and future improvements have been identified:
+
+1. **Nighttime/Low-Light Driving**: Standard RGB webcams fail in dark vehicle cabins. A production system would require an Infrared (IR) camera and IR-dot projectors, alongside Dlib models specifically trained on IR-illuminated faces.
+2. **Seatbelt Classification**: The COCO dataset used by the pre-trained `yolov8n` does not contain a seatbelt class. Currently, the system can only infer passenger presence. **Future Work** involves collecting interior cabin images and fine-tuning a custom YOLOv8 model to explicitly draw bounding boxes around lap and shoulder belts.
+3. **Hardware Acceleration**: The current pipeline utilizes the CPU for both Dlib and YOLO inference to ensure compatibility across laptops. Future iterations could integrate CUDA/TensorRT to utilize dedicated vehicle GPUs, allowing the framing rate to increase and permitting the use of heavier, more accurate models (like YOLOv8-Large).
