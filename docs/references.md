@@ -1,27 +1,29 @@
 # Project References
 
-This internal documentation details the open-source repositories and educational references used as inspiration and foundational code for building the Driver Monitoring System from scratch.
+This document details the external datasets, frameworks, and technologies used to build the Unified Edge-AI Driver Monitoring System.
 
-### 1. Drowsiness Detection by Akshay Bahadur
-* **Original Repo Path / Source:** `referance_1` - [https://github.com/akshaybahadur21/Drowsiness_Detection](https://github.com/akshaybahadur21/Drowsiness_Detection)
-* **Contributions Used:** 
-  * Provided the foundational logic for the **Eye Aspect Ratio (EAR)** calculation.
-  * Demonstrated the mathematical relationship of the 6 coordinates surrounding the eye to confidently classify eye closure.
+### 1. Driver Drowsiness Dataset (DMS)
+* **Source:** Roboflow Universe
+* **Link:** [https://universe.roboflow.com/drowsiness-detection-system/driver-drowsiness-3ldhq](https://universe.roboflow.com/drowsiness-detection-system/driver-drowsiness-3ldhq)
+* **Description:** 
+  * This is the massive 52,000+ image dataset used to train the final custom YOLOv8 model.
+  * It provides explicitly balanced classes for the core behaviors required for this project: `awake`, `distracted`, `eyes_closed`, `phone`, `smoking`, and `yawn`.
+  * The dataset utilizes advanced Mosaic Augmentation to ensure the AI learns to detect features across diverse lighting conditions, camera angles, and ethnicities.
 
-### 2. Driver Drowsiness Detector by Mohit
-* **Original Repo Path / Source:** `referance_2` - [https://github.com/mohitwildbeast/Driver-Drowsiness-Detector](https://github.com/mohitwildbeast/Driver-Drowsiness-Detector)
-* **Contributions Used:**
-  * Inspired the overall application flow for real-time webcam video feed parsing using OpenCV.
-  * Demonstrated the use of the `pygame` library to play non-blocking audio alarms when fatigue thresholds are met.
+### 2. Ultralytics YOLOv8 Framework
+* **Source:** [https://github.com/ultralytics/ultralytics](https://github.com/ultralytics/ultralytics)
+* **Description:** 
+  * YOLO (You Only Look Once) version 8 was used as the foundational architecture (`yolov8s.pt`) due to its industry-leading speed and accuracy for real-time object detection.
+  * The framework was utilized to execute Transfer Learning, adapting the general-purpose YOLO weights strictly to the custom Driver Monitoring dataset.
 
-### 3. Driver Drowsiness Detection by Neelanjan Manna
-* **Original Repo Path / Source:** `referance_3` - [https://github.com/neelanjan00/Driver-Drowsiness-Detection](https://github.com/neelanjan00/Driver-Drowsiness-Detection)
-* **Contributions Used:**
-  * Served as the primary inspiration for the **trifold behavioral approach**: monitoring Eye Aspect Ratio (EAR), Mouth Aspect Ratio (MAR) for yawning, and forward head tilt angle for distraction.
-  * This reference shaped the core requirement logic evaluated in our main pipeline.
+### 3. TensorFlow Lite & XNNPACK
+* **Source:** [https://www.tensorflow.org/lite](https://www.tensorflow.org/lite)
+* **Description:**
+  * TensorFlow Lite was selected as the deployment framework to ensure the model could run efficiently on edge-computing devices (such as a Raspberry Pi).
+  * The model was exported using **Float16 Quantization** to reduce memory footprint by 50% while preserving mathematical precision.
+  * The XNNPACK CPU delegate is leveraged at runtime to provide massive hardware acceleration without requiring a discrete GPU.
 
-### 4. Deep Learning Based Driver Monitoring System (AI-Driver-Safety)
-* **Original Repo Path / Source:** `referance_4` - [https://github.com/prasad-kumkar/ai-driver-safety](https://github.com/prasad-kumkar/ai-driver-safety)
-* **Contributions Used:**
-  * Provided a broader scope of what a real production-grade driver monitor should include (activity recognition, object detection).
-  * Inspired the integration of a secondary neural network (in our case, YOLOv8) to concurrently monitor objects like phones while the primarily dlib-based network monitors the face.
+### 4. OpenCV & PyGame
+* **Description:**
+  * **OpenCV (`cv2`)**: Used for interfacing with the external USB webcam, capturing frames, and rendering bounding boxes/text overlays in real-time.
+  * **PyGame**: Utilized to trigger asynchronous, non-blocking audio alarms (`alarm.wav`) when infraction thresholds are breached.

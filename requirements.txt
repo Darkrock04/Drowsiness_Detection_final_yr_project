@@ -1,7 +1,5 @@
 opencv-python
-dlib-bin
-imutils
-scipy
 numpy
 ultralytics
 pygame
+tensorflow
