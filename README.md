@@ -1,6 +1,6 @@
-# Driver Monitoring System (Final Year Project)
+# Driver Monitoring System
 
-This project implements a state-of-the-art, **Unified Edge-AI In-Cabin Monitoring System** designed to promote driver safety. By utilizing a single, highly optimized deep neural network, the system continuously analyzes the driver's face and actions in real-time to detect fatigue, distraction, and unsafe behaviors.
+This project implements a **Driver Monitoring System** designed to promote driver safety. By utilizing a single, highly optimized deep neural network, the system continuously analyzes the driver's face and actions in real-time to detect fatigue, distraction, and unsafe behaviors.
 
 ## Project Overview
 
