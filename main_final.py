@@ -24,7 +24,7 @@ if not os.path.exists(model_path):
     print(f"[ERROR] Could not find {model_path}!")
     exit()
 
-# Ultralytics seamlessly handles .tflite files!
+# Load our custom-trained TFLite model
 model = YOLO(model_path)
 
 # 3. Start Video Stream
@@ -49,8 +49,8 @@ while True:
         
     frame = cv2.flip(frame, 1)
     
-    # 4. RUN THE SINGLE BLACK BOX MODEL
-    # We pass the frame in, and YOLO finds ALL behaviors instantly.
+    # 4. RUN OUR CUSTOM-TRAINED MODEL
+    # We pass the frame in, and the model detects ALL behaviors instantly.
     # CONFIDENCE IS SET TO 0.45 to prevent "ghost" boxes and hallucinations!
     results = model(frame, verbose=False, conf=0.45)
     
@@ -61,7 +61,7 @@ while True:
     is_phone = False
     is_smoking = False
     
-    # Parse the YOLO outputs
+    # Parse the model outputs
     if len(results[0].boxes) > 0:
         for box in results[0].boxes:
             class_id = int(box.cls[0])
@@ -128,10 +128,10 @@ while True:
     if not any([is_drowsy, is_yawning, is_distracted, is_phone, is_smoking]) and max(drowsy_counter, yawn_counter, distracted_counter, phone_counter, smoke_counter) < 3:
         stop_alarm()
         
-    # Automatically draw the detection boxes from the TFLite model
+    # Automatically draw the detection boxes from our custom model
     annotated_frame = results[0].plot()
         
-    cv2.imshow("Final Year Project - Single Lite Model", annotated_frame)
+    cv2.imshow("Driver Monitoring System", annotated_frame)
     
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

@@ -1,12 +1,12 @@
 # Driver Monitoring System
 
-This project implements a **Driver Monitoring System** designed to promote driver safety. By utilizing a single, highly optimized deep neural network, the system continuously analyzes the driver's face and actions in real-time to detect fatigue, distraction, and unsafe behaviors.
+This project implements a **Driver Monitoring System** designed to promote driver safety. By utilizing a single, highly optimized custom-trained deep learning model, the system continuously analyzes the driver's face and actions in real-time to detect fatigue, distraction, and unsafe behaviors.
 
 ## Project Overview
 
-The core of this system is a custom-trained **YOLOv8s** (Small) object detection model that has been exported to **TensorFlow Lite (`Float16`)** format. This deployment strategy ensures the system runs with extremely high accuracy while maintaining lightweight computational requirements, making it ideal for edge devices (such as a Raspberry Pi or dashboard computer).
+The core of this system is a **custom-trained deep learning model** (`final_yr_drowsiness_model.tflite`) that we built and trained ourselves on a massive dataset of over 52,000 images. The model has been exported to **TensorFlow Lite (`Float16`)** format, ensuring it runs with extremely high accuracy while maintaining lightweight computational requirements, making it ideal for edge devices (such as a Raspberry Pi or dashboard computer).
 
-The AI acts as a single "Black Box" engine. It consumes raw video frames from an external webcam and outputs precise bounding boxes and class identifiers for 5 distinct driver behaviors simultaneously.
+The model acts as a single inference engine. It consumes raw video frames from an external webcam and outputs precise bounding boxes and class identifiers for 5 distinct driver behaviors simultaneously.
 
 ## Core Features & Capabilities
 
@@ -22,13 +22,26 @@ The system tracks 5 critical infractions. To ensure professional stability and p
 
 ---
 
+## Model Training Details
+
+We trained our own custom deep learning model from scratch using Transfer Learning on a curated dataset of 52,000+ images.
+
+*   **Training Platform:** Kaggle (T4x2 GPU, 50 Epochs, ~9 hours)
+*   **Dataset:** [Driver Drowsiness Dataset (v10) — Roboflow Universe](https://universe.roboflow.com/drowsiness-detection-system/driver-drowsiness-3ldhq/dataset/10)
+*   **Model Classes:** `awake`, `distracted`, `eyes_closed`, `phone`, `smoking`, `yawn`
+*   **Export Format:** TensorFlow Lite with Float16 Quantization
+*   **Model File:** `final_yr_drowsiness_model.tflite`
+
+---
+
 ## Detailed Documentation
 
 The comprehensive technical breakdown of this project is organized within the `docs/` folder:
 
-1. **[System Workflow & Architecture](docs/workflow.md)**: Explains the step-by-step pipeline of how the video frame is captured, processed by the AI, and converted into audio alerts.
+1. **[System Workflow & Architecture](docs/workflow.md)**: Explains the step-by-step pipeline of how the video frame is captured, processed by the model, and converted into audio alerts.
 2. **[Modules & Technologies Used](docs/modules_used.md)**: Details the specific Python libraries and frameworks that power the system.
-3. **[References & Training Data](docs/references.md)**: Contains links to the massive 52,000-image dataset used to train the model, along with details on the Kaggle training environment.
+3. **[Literature Survey & Research Gap](docs/literature_survey.md)**: Explains why our approach is different from existing research and what gap it fills.
+4. **[References & Training Data](docs/references.md)**: Contains links to the dataset, training platform, and tools used.
 
 ---
 
